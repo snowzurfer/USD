@@ -442,92 +442,6 @@ def InstallZlib(context, force, buildArgs):
 
 ZLIB = Dependency("zlib", InstallZlib, "include/zlib.h")
         
-############################################################
-# boost
-
-if Linux():
-    BOOST_URL = "http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz"
-    BOOST_VERSION_FILE = "include/boost/version.hpp"
-elif MacOS():
-    BOOST_URL = "http://downloads.sourceforge.net/project/boost/boost/1.61.0/boost_1_61_0.tar.gz"
-    BOOST_VERSION_FILE = "include/boost/version.hpp"
-elif Windows():
-    BOOST_URL = "http://downloads.sourceforge.net/project/boost/boost/1.61.0/boost_1_61_0.tar.gz"
-    # The default installation of boost on Windows puts headers in a versioned 
-    # subdirectory, which we have to account for here. In theory, specifying 
-    # "layout=system" would make the Windows install match Linux/MacOS, but that 
-    # causes problems for other dependencies that look for boost.
-    BOOST_VERSION_FILE = "include/boost-1_61/boost/version.hpp"
-
-    # On Visual Studio 2017 we need at least boost 1.65.1
-    if IsVisualStudio2017OrGreater():
-        BOOST_URL = "http://downloads.sourceforge.net/project/boost/boost/1.65.1/boost_1_65_1.tar.gz"
-        BOOST_VERSION_FILE = "include/boost-1_65_1/boost/version.hpp"
-
-
-
-def InstallBoost(context, force, buildArgs):
-    # Documentation files in the boost archive can have exceptionally
-    # long paths. This can lead to errors when extracting boost on Windows,
-    # since paths are limited to 260 characters by default on that platform.
-    # To avoid this, we skip extracting all documentation.
-    #
-    # For some examples, see: https://svn.boost.org/trac10/ticket/11677
-    dontExtract = ["*/doc/*", "*/libs/*/doc/*"]
-
-    with CurrentWorkingDirectory(DownloadURL(BOOST_URL, context, force, 
-                                             dontExtract)):
-        bootstrap = "bootstrap.bat" if Windows() else "./bootstrap.sh"
-        Run('{bootstrap} --prefix="{instDir}"'
-            .format(bootstrap=bootstrap, instDir=context.instDir))
-
-        # b2 supports at most -j64 and will error if given a higher value.
-        num_procs = min(64, context.numJobs)
-
-        b2_settings = [
-            '--prefix="{instDir}"'.format(instDir=context.instDir),
-            '--build-dir="{buildDir}"'.format(buildDir=context.buildDir),
-            '-j{procs}'.format(procs=num_procs),
-            'address-model=64',
-            'link=shared',
-            'runtime-link=shared',
-            'threading=multi', 
-            'variant=release',
-            '--with-atomic',
-            '--with-date_time',
-            '--with-filesystem',
-            '--with-program_options',
-            '--with-regex',
-            '--with-system',
-            '--with-thread'
-        ]
-
-        if context.buildPython:
-            b2_settings.append("--with-python")
-
-        if force:
-            b2_settings.append("-a")
-
-        if Windows():
-
-            if IsVisualStudio2017OrGreater():
-                b2_settings.append("toolset=msvc-14.1")
-            else:
-                b2_settings.append("toolset=msvc-14.0")
-
-        if MacOS():
-            # Must specify toolset=clang to ensure install_name for boost
-            # libraries includes @rpath
-            b2_settings.append("toolset=clang")
-
-        # Add on any user-specified extra arguments.
-        b2_settings += buildArgs
-
-        b2 = "b2" if Windows() else "./b2"
-        Run('{b2} {options} install'
-            .format(b2=b2, options=" ".join(b2_settings)))
-
-BOOST = Dependency("boost", InstallBoost, BOOST_VERSION_FILE)
 
 ############################################################
 # Intel TBB
@@ -1377,7 +1291,7 @@ if extraPythonPaths:
 
 # Determine list of dependencies that are required based on options
 # user has selected.
-requiredDependencies = [ZLIB, BOOST, TBB]
+requiredDependencies = [ZLIB, TBB]
 
 if context.buildAlembic:
     if context.enableHDF5:

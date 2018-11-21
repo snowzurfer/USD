@@ -444,50 +444,6 @@ ZLIB = Dependency("zlib", InstallZlib, "include/zlib.h")
         
 
 ############################################################
-# Intel TBB
-
-if Windows():
-    TBB_URL = "https://github.com/01org/tbb/releases/download/2017_U5/tbb2017_20170226oss_win.zip"
-elif MacOS():
-    TBB_URL = "https://github.com/01org/tbb/archive/2017_U2.tar.gz"
-else:
-    TBB_URL = "https://github.com/01org/tbb/archive/4.4.6.tar.gz"
-
-def InstallTBB(context, force, buildArgs):
-    if Windows():
-        InstallTBB_Windows(context, force, buildArgs)
-    elif Linux() or MacOS():
-        InstallTBB_LinuxOrMacOS(context, force, buildArgs)
-
-def InstallTBB_Windows(context, force, buildArgs):
-    with CurrentWorkingDirectory(DownloadURL(TBB_URL, context, force)):
-        # On Windows, we simply copy headers and pre-built DLLs to
-        # the appropriate location.
-
-        if buildArgs:
-            PrintWarning("Ignoring build arguments {}, TBB is "
-                         "not built from source on this platform."
-                         .format(buildArgs))
-
-        CopyFiles(context, "bin\\intel64\\vc14\\*.*", "bin")
-        CopyFiles(context, "lib\\intel64\\vc14\\*.*", "lib")
-        CopyDirectory(context, "include\\serial", "include\\serial")
-        CopyDirectory(context, "include\\tbb", "include\\tbb")
-
-def InstallTBB_LinuxOrMacOS(context, force, buildArgs):
-    with CurrentWorkingDirectory(DownloadURL(TBB_URL, context, force)):
-        # TBB does not support out-of-source builds in a custom location.
-        Run('make -j{procs} {buildArgs}'
-            .format(procs=context.numJobs, 
-                    buildArgs=" ".join(buildArgs)))
-
-        CopyFiles(context, "build/*_release/libtbb*.*", "lib")
-        CopyDirectory(context, "include/serial", "include/serial")
-        CopyDirectory(context, "include/tbb", "include/tbb")
-
-TBB = Dependency("TBB", InstallTBB, "include/tbb/tbb.h")
-
-############################################################
 # JPEG
 
 if Windows():
@@ -1291,7 +1247,7 @@ if extraPythonPaths:
 
 # Determine list of dependencies that are required based on options
 # user has selected.
-requiredDependencies = [ZLIB, TBB]
+requiredDependencies = [ZLIB]
 
 if context.buildAlembic:
     if context.enableHDF5:
